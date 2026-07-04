@@ -1027,6 +1027,22 @@ export class Multisig {
   }
 
   /**
+   * BARTOK addition (PR-able): submit a custom proposal from its serialized
+   * request bytes + the advice from `prepareCustomExecution`, rebuilding the
+   * request inside THIS package's SDK instance. Lets integrations avoid
+   * constructing SDK objects (Felt/Note/etc.) in their own bundle — critical
+   * when the app and this linked package would otherwise fork two WASM
+   * instances (mismatched Felt classes). Deterministic: same bytes + advice.
+   */
+  async submitCustomFromBytes(
+    transactionRequestBytes: Uint8Array,
+    advice: AdviceMap,
+  ): Promise<void> {
+    const request = deserializeTransactionRequest(transactionRequestBytes).extendAdviceMap(advice);
+    await this.submitTransaction(request);
+  }
+
+  /**
    * Create a proposal from a producer-built transaction the SDK does not model
    * (issue #266 producer API). `transactionRequestBytes` is a serialized TransactionRequest;
    * `proposalType` is a free-form, non-empty label that must not collide with a

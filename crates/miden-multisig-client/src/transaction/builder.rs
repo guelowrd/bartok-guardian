@@ -89,12 +89,17 @@ impl ProposalBuilder {
                 )
                 .await
             }
-            TransactionType::ConsumeNotes { ref note_ids, .. } => {
+            TransactionType::ConsumeNotes {
+                ref note_ids,
+                ref notes,
+                ..
+            } => {
                 self.build_consume_notes(
                     miden_client,
                     guardian_client,
                     account,
                     note_ids.clone(),
+                    notes.clone(),
                     key_manager,
                 )
                 .await
@@ -445,6 +450,7 @@ impl ProposalBuilder {
         guardian_client: &mut GuardianClient,
         account: &MultisigAccount,
         note_ids: Vec<NoteId>,
+        provided_notes: Vec<crate::proposal::SerializedNote>,
         key_manager: &dyn KeyManager,
     ) -> Result<Proposal> {
         let account_id = account.id();
@@ -454,9 +460,28 @@ impl ProposalBuilder {
         // Generate salt for replay protection
         let salt = generate_salt();
 
-        // Fetch notes from the proposer's local store for v2 embedding (FR-012).
-        let fetched_notes =
-            crate::transaction::consume::fetch_notes_from_store(miden_client, &note_ids).await?;
+        // BARTOK patch (PR-able upstream): when the caller supplies v2 embedded
+        // notes (index-aligned with note_ids), use them directly — the proposer
+        // may have received the notes out-of-band (private notes) and need not
+        // hold them in its local store. Falls back to the store fetch (FR-012).
+        let fetched_notes = if provided_notes.len() == note_ids.len() && !provided_notes.is_empty()
+        {
+            let mut decoded = Vec::with_capacity(provided_notes.len());
+            for (i, sn) in provided_notes.iter().enumerate() {
+                let note = sn.to_note().map_err(|e| {
+                    MultisigError::InvalidConfig(format!("embedded note {i} invalid: {e:?}"))
+                })?;
+                if note.id() != note_ids[i] {
+                    return Err(MultisigError::InvalidConfig(format!(
+                        "embedded note {i} id mismatch with note_ids"
+                    )));
+                }
+                decoded.push(note);
+            }
+            decoded
+        } else {
+            crate::transaction::consume::fetch_notes_from_store(miden_client, &note_ids).await?
+        };
         let serialized_notes: Vec<crate::proposal::SerializedNote> = fetched_notes
             .iter()
             .map(crate::proposal::SerializedNote::from_note)

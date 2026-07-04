@@ -45,8 +45,16 @@ async fn main() {
         .metadata(metadata)
         .auditor(auditor)
         .ack(ack)
-        .http(true, 3000)
-        .grpc(true, 50051)
+        // BARTOK patch (PR-able upstream): ports overridable via env for
+        // co-hosting an application Guardian next to other local services.
+        .http(
+            true,
+            env::var("GUARDIAN_HTTP_PORT").ok().and_then(|v| v.parse().ok()).unwrap_or(3000),
+        )
+        .grpc(
+            true,
+            env::var("GUARDIAN_GRPC_PORT").ok().and_then(|v| v.parse().ok()).unwrap_or(50051),
+        )
         .cors(cors_layer)
         .build()
         .await

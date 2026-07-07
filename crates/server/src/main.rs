@@ -31,7 +31,7 @@ async fn main() {
         .expect("Failed to initialize CORS config")
         .layer();
 
-    let network_type = NetworkType::from_env_or("GUARDIAN_NETWORK_TYPE", NetworkType::MidenDevnet);
+    let network_type = NetworkType::from_env_or("GUARDIAN_NETWORK_TYPE", NetworkType::MidenTestnet); // BARTOK: testnet-safe default
 
     ServerBuilder::new()
         .with_logging(LoggingConfig::default())

@@ -5,7 +5,7 @@ import {
   WasmWebClient,
 } from '@miden-sdk/miden-sdk';
 
-export const DEFAULT_MIDEN_RPC_URL = 'https://rpc.devnet.miden.io';
+export const DEFAULT_MIDEN_RPC_URL = 'https://rpc.testnet.miden.io'; // BARTOK: testnet-safe default
 
 export type RawClientSource = MidenClient | WasmWebClient;
 export interface ScriptLibrarySource {
